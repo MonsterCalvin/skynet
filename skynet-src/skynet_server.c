@@ -41,18 +41,18 @@
 #endif
 
 struct skynet_context {
-	void * instance;
-	struct skynet_module * mod;
+	void * instance;				//模块实体指针
+	struct skynet_module * mod;		//模块指针
 	void * cb_ud;
-	skynet_cb cb;
-	struct message_queue *queue;
+	skynet_cb cb;					//skynet_cb 消息处理回调函数
+	struct message_queue *queue;	//消息队列
 	FILE * logfile;
 	uint64_t cpu_cost;	// in microsec
 	uint64_t cpu_start;	// in microsec
 	char result[32];
 	uint32_t handle;
-	int session_id;
-	int ref;
+	int session_id;		
+	int ref;			// 服务引用数
 	int message_count;
 	bool init;
 	bool endless;
@@ -60,6 +60,7 @@ struct skynet_context {
 
 	CHECKCALLING_DECL
 };
+
 
 struct skynet_node {
 	int total;
@@ -69,6 +70,7 @@ struct skynet_node {
 	bool profile;	// default is off
 };
 
+// 统计管理skynet_context节点
 static struct skynet_node G_NODE;
 
 int 
@@ -161,6 +163,7 @@ skynet_context_new(const char * name, const char *param) {
 	int r = skynet_module_instance_init(mod, inst, ctx, param);
 	CHECKCALLING_END(ctx)
 	if (r == 0) {
+		//release 1次 (why)
 		struct skynet_context * ret = skynet_context_release(ctx);
 		if (ret) {
 			ctx->init = true;
@@ -173,7 +176,9 @@ skynet_context_new(const char * name, const char *param) {
 	} else {
 		skynet_error(ctx, "FAILED launch %s", name);
 		uint32_t handle = ctx->handle;
+		//release 1次
 		skynet_context_release(ctx);
+		//这里会对context再进行release
 		skynet_handle_retire(handle);
 		struct drop_t d = { handle };
 		skynet_mq_release(queue, drop_message, &d);
@@ -677,7 +682,9 @@ skynet_command(struct skynet_context * context, const char * cmd , const char * 
 
 static void
 _filter_args(struct skynet_context * context, int type, int *session, void ** data, size_t * sz) {
+	// 是否copy data
 	int needcopy = !(type & PTYPE_TAG_DONTCOPY);
+	// 是否需要创建session
 	int allocsession = type & PTYPE_TAG_ALLOCSESSION;
 	type &= 0xff;
 
@@ -698,6 +705,7 @@ _filter_args(struct skynet_context * context, int type, int *session, void ** da
 
 int
 skynet_send(struct skynet_context * context, uint32_t source, uint32_t destination , int type, int session, void * data, size_t sz) {
+	// 检测size是否超了24位, 因为高8位用来保存类型
 	if ((sz & MESSAGE_TYPE_MASK) != sz) {
 		skynet_error(context, "The message to %x is too large", destination);
 		if (type & PTYPE_TAG_DONTCOPY) {
@@ -705,6 +713,8 @@ skynet_send(struct skynet_context * context, uint32_t source, uint32_t destinati
 		}
 		return -1;
 	}
+
+	// 根据类型处理参数
 	_filter_args(context, type, &session, (void **)&data, &sz);
 
 	if (source == 0) {
@@ -714,6 +724,8 @@ skynet_send(struct skynet_context * context, uint32_t source, uint32_t destinati
 	if (destination == 0) {
 		return session;
 	}
+	// 如果是跨节点消息则 harbor send
+	// 否则则直接push进消息队列
 	if (skynet_harbor_message_isremote(destination)) {
 		struct remote_message * rmsg = skynet_malloc(sizeof(*rmsg));
 		rmsg->destination.handle = destination;

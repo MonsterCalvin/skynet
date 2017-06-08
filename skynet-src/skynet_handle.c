@@ -12,21 +12,21 @@
 #define MAX_SLOT_SIZE 0x40000000
 
 struct handle_name {
-	char * name;
-	uint32_t handle;
+	char * name;	//服务名称
+	uint32_t handle;	//服务handle
 };
 
 struct handle_storage {
 	struct rwlock lock;
 
-	uint32_t harbor;
-	uint32_t handle_index;
-	int slot_size;
-	struct skynet_context ** slot;
+	uint32_t harbor;	//harbor ID
+	uint32_t handle_index;			//当前使用的服务载体数组index
+	int slot_size;					//服务载体数量
+	struct skynet_context ** slot;	//保存服务载体
 	
 	int name_cap;
 	int name_count;
-	struct handle_name *name;
+	struct handle_name *name;	//名称handle存储数组
 };
 
 static struct handle_storage *H = NULL;
@@ -39,6 +39,7 @@ skynet_handle_register(struct skynet_context *ctx) {
 	
 	for (;;) {
 		int i;
+		//在已有的找一个空位
 		for (i=0;i<s->slot_size;i++) {
 			uint32_t handle = (i+s->handle_index) & HANDLE_MASK;
 			int hash = handle & (s->slot_size-1);
@@ -52,6 +53,7 @@ skynet_handle_register(struct skynet_context *ctx) {
 				return handle;
 			}
 		}
+		//没有则扩大两倍
 		assert((s->slot_size*2 - 1) <= HANDLE_MASK);
 		struct skynet_context ** new_slot = skynet_malloc(s->slot_size * 2 * sizeof(struct skynet_context *));
 		memset(new_slot, 0, s->slot_size * 2 * sizeof(struct skynet_context *));

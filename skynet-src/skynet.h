@@ -24,11 +24,13 @@
 #define PTYPE_TAG_DONTCOPY 0x10000
 #define PTYPE_TAG_ALLOCSESSION 0x20000
 
-struct skynet_context;
+struct skynet_context;  
 
 void skynet_error(struct skynet_context * context, const char *msg, ...);
 const char * skynet_command(struct skynet_context * context, const char * cmd , const char * parm);
 uint32_t skynet_queryname(struct skynet_context * context, const char * name);
+// 消息发送
+// 
 int skynet_send(struct skynet_context * context, uint32_t source, uint32_t destination , int type, int session, void * msg, size_t sz);
 int skynet_sendname(struct skynet_context * context, uint32_t source, const char * destination , int type, int session, void * msg, size_t sz);
 

@@ -7,14 +7,16 @@
 #define GLOBALNAME_LENGTH 16
 #define REMOTE_MAX 256
 
+// 节点 名字handle对
 struct remote_name {
 	char name[GLOBALNAME_LENGTH];
 	uint32_t handle;
 };
 
+// 跨节点消息
 struct remote_message {
-	struct remote_name destination;
-	const void * message;
+	struct remote_name destination; //目的地
+	const void * message;	//数据
 	size_t sz;
 };
 

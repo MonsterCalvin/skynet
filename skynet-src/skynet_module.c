@@ -12,6 +12,7 @@
 
 #define MAX_MODULE_TYPE 32
 
+// model管理器
 struct modules {
 	int count;
 	struct spinlock lock;

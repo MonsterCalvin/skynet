@@ -16,7 +16,7 @@ struct socket_server;
 
 struct socket_message {
 	int id;
-	uintptr_t opaque;
+	uintptr_t opaque;	//对应服务handle
 	int ud;	// for accept, ud is new connection id ; for data, ud is size of data 
 	char * data;
 };
@@ -36,7 +36,7 @@ int socket_server_send_lowpriority(struct socket_server *, int id, const void * 
 
 // ctrl command below returns id
 int socket_server_listen(struct socket_server *, uintptr_t opaque, const char * addr, int port, int backlog);
-int socket_server_connect(struct socket_server *, uintptr_t opaque, const char * addr, int port);
+int socket_servepr_connect(struct socket_server *, uintptr_t opaque, const char * addr, int port);
 int socket_server_bind(struct socket_server *, uintptr_t opaque, int fd);
 
 // for tcp
@@ -55,6 +55,7 @@ int socket_server_udp_send(struct socket_server *, int id, const struct socket_u
 // extract the address of the message, struct socket_message * should be SOCKET_UDP
 const struct socket_udp_address * socket_server_udp_address(struct socket_server *, struct socket_message *, int *addrsz);
 
+// 发送object的接口
 struct socket_object_interface {
 	void * (*buffer)(void *);
 	int (*size)(void *);

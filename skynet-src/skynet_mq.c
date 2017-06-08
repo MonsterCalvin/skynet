@@ -18,20 +18,23 @@
 #define MQ_IN_GLOBAL 1
 #define MQ_OVERLOAD 1024
 
+// 消息队列
 struct message_queue {
 	struct spinlock lock;
 	uint32_t handle;
-	int cap;
-	int head;
-	int tail;
+	int cap;	//消息队列容量
+	int head;	//消息头指针index
+	int tail;	//消息尾指针index
 	int release;
 	int in_global;
-	int overload;
+	int overload;	//负载数
 	int overload_threshold;
-	struct skynet_message *queue;
-	struct message_queue *next;
+	struct skynet_message *queue; //消息数组
+
+	struct message_queue *next;	//消息列表链接node
 };
 
+// 全局消息队列链表
 struct global_queue {
 	struct message_queue *head;
 	struct message_queue *tail;

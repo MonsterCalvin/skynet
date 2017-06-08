@@ -21,15 +21,17 @@
 #define MAX_SOCKET_P 16
 #define MAX_EVENT 64
 #define MIN_READ_BUFFER 64
-#define SOCKET_TYPE_INVALID 0
-#define SOCKET_TYPE_RESERVE 1
-#define SOCKET_TYPE_PLISTEN 2
-#define SOCKET_TYPE_LISTEN 3
-#define SOCKET_TYPE_CONNECTING 4
-#define SOCKET_TYPE_CONNECTED 5
+
+//socket type类型
+#define SOCKET_TYPE_INVALID 0 	//无效socket
+#define SOCKET_TYPE_RESERVE 1 	//保留
+#define SOCKET_TYPE_PLISTEN 2 	//创建了listen的套接字,准备listen
+#define SOCKET_TYPE_LISTEN 3 	//listen
+#define SOCKET_TYPE_CONNECTING 4 	//正在连接 connect的时候返回EINPROGRESS
+#define SOCKET_TYPE_CONNECTED 5		//已经连接
 #define SOCKET_TYPE_HALFCLOSE 6
-#define SOCKET_TYPE_PACCEPT 7
-#define SOCKET_TYPE_BIND 8
+#define SOCKET_TYPE_PACCEPT 7  //准备accept
+#define SOCKET_TYPE_BIND 8 		//socket bind
 
 #define MAX_SOCKET (1<<MAX_SOCKET_P)
 
@@ -55,33 +57,36 @@
 
 #define WARNING_SIZE (1024*1024)
 
+// writebuffer 节点
 struct write_buffer {
 	struct write_buffer * next;
-	void *buffer;
-	char *ptr;
-	int sz;
+	void *buffer;	//内存数据
+	char *ptr;		//当前指针
+	int sz;			//数据大小
 	bool userobject;
-	uint8_t udp_address[UDP_ADDRESS_SIZE];
+	uint8_t udp_address[UDP_ADDRESS_SIZE];	//udp地址
 };
 
+//(tcp包长度不包含udp地址)
 #define SIZEOF_TCPBUFFER (offsetof(struct write_buffer, udp_address[0]))
 #define SIZEOF_UDPBUFFER (sizeof(struct write_buffer))
 
+// writebuffer 链表
 struct wb_list {
 	struct write_buffer * head;
 	struct write_buffer * tail;
 };
 
 struct socket {
-	uintptr_t opaque;
-	struct wb_list high;
-	struct wb_list low;
-	int64_t wb_size;
-	int fd;
+	uintptr_t opaque;		//对应服务handle
+	struct wb_list high;	//高优先级wb
+	struct wb_list low;		//低优先级wb
+	int64_t wb_size;		//发送缓冲区未发送的数据
+	int fd;					//套接字
 	int id;
-	uint16_t protocol;
-	uint16_t type;
-	int64_t warn_size;
+	uint16_t protocol;		//protocol参数 tcp还是udp
+	uint16_t type;			//对应SOCKET_TYPE
+	int64_t warn_size;		//警戒缓冲数据大小范围, 用于双倍扩充缓冲区大小
 	union {
 		int size;
 		uint8_t udp_address[UDP_ADDRESS_SIZE];
@@ -89,11 +94,11 @@ struct socket {
 };
 
 struct socket_server {
-	int recvctrl_fd;
-	int sendctrl_fd;
+	int recvctrl_fd;	//read fd
+	int sendctrl_fd;	//write fd
 	int checkctrl;
-	poll_fd event_fd;
-	int alloc_id;
+	poll_fd event_fd;	//epoll create的fd
+	int alloc_id;		//创建struct socket的唯一id(自增)
 	int event_n;
 	int event_index;
 	struct socket_object_interface soi;
@@ -101,7 +106,7 @@ struct socket_server {
 	struct socket slot[MAX_SOCKET];
 	char buffer[MAX_INFO];
 	uint8_t udpbuffer[MAX_UDP_PACKAGE];
-	fd_set rfds;
+	fd_set rfds;	//select用到的fds
 };
 
 struct request_open {
@@ -239,6 +244,7 @@ write_buffer_free(struct socket_server *ss, struct write_buffer *wb) {
 	FREE(wb);
 }
 
+// 让socket保持活动
 static void
 socket_keepalive(int fd) {
 	int keepalive = 1;
@@ -278,7 +284,10 @@ struct socket_server *
 socket_server_create() {
 	int i;
 	int fd[2];
+
+	// epoll create返回epoll的fd
 	poll_fd efd = sp_create();
+	// 判断是否创建成功
 	if (sp_invalid(efd)) {
 		fprintf(stderr, "socket-server: create event pool failed.\n");
 		return NULL;
@@ -288,6 +297,7 @@ socket_server_create() {
 		fprintf(stderr, "socket-server: create socket pair failed.\n");
 		return NULL;
 	}
+	// 注册EPOLLIN事件
 	if (sp_add(efd, fd[0], NULL)) {
 		// add recvctrl_fd to event poll
 		fprintf(stderr, "socket-server: can't add server fd to event pool.\n");
@@ -303,6 +313,7 @@ socket_server_create() {
 	ss->sendctrl_fd = fd[1];
 	ss->checkctrl = 1;
 
+	// 初始化socket
 	for (i=0;i<MAX_SOCKET;i++) {
 		struct socket *s = &ss->slot[i];
 		s->type = SOCKET_TYPE_INVALID;
@@ -425,15 +436,21 @@ open_socket(struct socket_server *ss, struct request_open * request, struct sock
 		result->data = (void *)gai_strerror(status);
 		goto _failed;
 	}
+
 	int sock= -1;
 	for (ai_ptr = ai_list; ai_ptr != NULL; ai_ptr = ai_ptr->ai_next ) {
+		// 创建socket套接字
 		sock = socket( ai_ptr->ai_family, ai_ptr->ai_socktype, ai_ptr->ai_protocol );
 		if ( sock < 0 ) {
 			continue;
 		}
 		socket_keepalive(sock);
+		// 设置socket非阻塞
 		sp_nonblocking(sock);
+
+		//连接socket
 		status = connect( sock, ai_ptr->ai_addr, ai_ptr->ai_addrlen);
+		// 如果连接成功则退出循环
 		if ( status != 0 && errno != EINPROGRESS) {
 			close(sock);
 			sock = -1;
@@ -447,6 +464,7 @@ open_socket(struct socket_server *ss, struct request_open * request, struct sock
 		goto _failed;
 	}
 
+	// 创建skynet socket结构体
 	ns = new_fd(ss, id, sock, PROTOCOL_TCP, request->opaque, true);
 	if (ns == NULL) {
 		close(sock);
