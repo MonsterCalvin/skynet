@@ -83,7 +83,7 @@ struct socket {
 	struct wb_list low;		//低优先级wb
 	int64_t wb_size;		//发送缓冲区未发送的数据
 	int fd;					//套接字
-	int id;
+	int id;					//唯一id (socket server 创建的alloc_id)
 	uint16_t protocol;		//protocol参数 tcp还是udp
 	uint16_t type;			//对应SOCKET_TYPE
 	int64_t warn_size;		//警戒缓冲数据大小范围, 用于双倍扩充缓冲区大小

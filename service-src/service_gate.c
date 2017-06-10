@@ -21,15 +21,15 @@ struct connection {
 };
 
 struct gate {
-	struct skynet_context *ctx;
-	int listen_id;
-	uint32_t watchdog;
-	uint32_t broker;
-	int client_tag;
-	int header_size;
-	int max_connection;
-	struct hashid hash;
-	struct connection *conn;
+	struct skynet_context *ctx;		//挂载的服务指针
+	int listen_id;					//监听accpet的fd
+	uint32_t watchdog;				//watchdog handle
+	uint32_t broker;				//broker handle
+	int client_tag;				//消息类型
+	int header_size;		//数据头大小
+	int max_connection;		//最大连接数
+	struct hashid hash;		//connection的id hash
+	struct connection *conn;	//connection数组
 	// todo: save message pool ptr for release
 	struct messagepool mp;
 };

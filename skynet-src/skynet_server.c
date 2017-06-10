@@ -43,7 +43,7 @@
 struct skynet_context {
 	void * instance;				//模块实体指针
 	struct skynet_module * mod;		//模块指针
-	void * cb_ud;
+	void * cb_ud;					//服务的结构体
 	skynet_cb cb;					//skynet_cb 消息处理回调函数
 	struct message_queue *queue;	//消息队列
 	FILE * logfile;
