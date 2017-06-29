@@ -11,6 +11,8 @@ local client_number = 0
 local CMD = setmetatable({}, { __gc = function() netpack.clear(queue) end })
 local nodelay = false
 
+
+--连接池表, 记录fd
 local connection = {}
 
 function gateserver.openclient(fd)
@@ -31,6 +33,7 @@ function gateserver.start(handler)
 	assert(handler.message)
 	assert(handler.connect)
 
+	--启动socket listen监听连接
 	function CMD.open( source, conf )
 		assert(not socket)
 		local address = conf.address or "0.0.0.0"
@@ -45,6 +48,7 @@ function gateserver.start(handler)
 		end
 	end
 
+	--关闭socket
 	function CMD.close()
 		assert(socket)
 		socketdriver.close(socket)

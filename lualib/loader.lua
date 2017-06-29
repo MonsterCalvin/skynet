@@ -1,3 +1,4 @@
+--加载lua服务文件
 local args = {}
 for word in string.gmatch(..., "%S+") do
 	table.insert(args, word)

@@ -31,6 +31,7 @@
 	message type (8bits) is in destination high 8bits
 	harbor id (8bits) is also in that place , but remote message doesn't need harbor id.
  */
+// 远程消息头
 struct remote_message_header {
 	uint32_t source;
 	uint32_t destination;
@@ -38,11 +39,13 @@ struct remote_message_header {
 };
 
 struct harbor_msg {
-	struct remote_message_header header;
-	void * buffer;
-	size_t size;
+	struct remote_message_header header;	//消息头
+	void * buffer;			//数据
+	size_t size;			//数据大小
 };
 
+
+// 远程消息链表
 struct harbor_msg_queue {
 	int size;
 	int head;

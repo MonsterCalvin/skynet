@@ -101,15 +101,18 @@ init_cb(struct snlua *l, struct skynet_context *ctx, const char * args, size_t s
 	lua_pushcfunction(L, traceback);
 	assert(lua_gettop(L) == 1);
 
+	//找到loader文件
 	const char * loader = optstring(ctx, "lualoader", "./lualib/loader.lua");
-
+	//加载loader(不调用)
 	int r = luaL_loadfile(L,loader);
 	if (r != LUA_OK) {
 		skynet_error(ctx, "Can't load %s : %s", loader, lua_tostring(L, -1));
 		report_launcher_error(ctx);
 		return 1;
 	}
+	//传入参数(需要加载的lua文件名)
 	lua_pushlstring(L, args, sz);
+	//调用
 	r = lua_pcall(L,1,0,1);
 	if (r != LUA_OK) {
 		skynet_error(ctx, "lua loader error : %s", lua_tostring(L, -1));

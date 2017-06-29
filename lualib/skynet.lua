@@ -43,8 +43,11 @@ function skynet.register_protocol(class)
 end
 
 local session_id_coroutine = {}
+--记录消息处理创建coroutine的session id
 local session_coroutine_id = {}
+--记录消息处理创建coroutine的source
 local session_coroutine_address = {}
+
 local session_response = {}
 local unresponse = {}
 
